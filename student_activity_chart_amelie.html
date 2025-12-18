@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagramme des Activités Étudiantes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+
+        .header-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .header-stat-value {
+            font-weight: bold;
+        }
+
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .file-input-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: inline-block;
+            pointer-events: none;
+        }
+
+        .file-input-wrapper:hover .file-input-button {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .controls {
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: none;
+        }
+
+        .controls.active {
+            display: block;
+        }
+
+        .date-control {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .date-control label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .date-control input[type=range] {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: #dee2e6;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .date-control input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .date-control input[type=range]::-webkit-slider-thumb:hover {
+            background: #764ba2;
+            transform: scale(1.2);
+        }
+
+        .date-display {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .play-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .play-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .play-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .chart-container {
+            padding: 15px 30px;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .chart-container.active {
+            display: block;
+        }
+
+        .activity-row {
+            margin-bottom: 8px;
+            animation: fadeIn 0.5s;
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .activity-label {
+            display: none;
+        }
+
+        .bar-container {
+            position: relative;
+            height: 18px;
+            background: #e9ecef;
+            border-radius: 9px;
+            overflow: hidden;
+            cursor: help;
+        }
+
+        .bar-scale {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: #adb5bd;
+            left: 50%;
+            z-index: 1;
+        }
+
+        .bar {
+            position: absolute;
+            height: 100%;
+            top: 0;
+            border-radius: 9px;
+            transition: all 0.5s ease;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            padding: 0 5px;
+        }
+
+        .bar.positive {
+            background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%);
+            left: 50%;
+            justify-content: flex-start;
+        }
+
+        .bar.negative {
+            background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+            right: 50%;
+            justify-content: flex-end;
+        }
+
+        .stats {
+            display: none;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Activité de l'étudiant</h1>
+            <div class="header-stats" id="headerStats"></div>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="file-input-wrapper">
+                <div class="file-input-button">📁 Charger un fichier CSV</div>
+                <input type="file" id="fileInput" accept=".csv">
+            </div>
+            <p style="margin-top: 15px; color: #6c757d;">Sélectionnez un fichier CSV contenant les données des activités</p>
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="date-control">
+                <label>Date :</label>
+                <input type="range" id="dateSlider" min="0" max="0" value="0">
+                <div class="date-display" id="dateDisplay">--</div>
+            </div>
+            <div class="play-controls">
+                <button class="play-btn" id="playBtn">▶ Lecture</button>
+                <button class="play-btn" id="resetBtn">⟲ Réinitialiser</button>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer"></div>
+
+        <div class="stats" id="stats"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script>
+        let data = [];
+        let activities = [];
+        let dates = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const controls = document.getElementById('controls');
+        const chartContainer = document.getElementById('chartContainer');
+        const headerStats = document.getElementById('headerStats');
+        const dateSlider = document.getElementById('dateSlider');
+        const dateDisplay = document.getElementById('dateDisplay');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        fileInput.addEventListener('change', handleFileUpload);
+        dateSlider.addEventListener('input', handleSliderChange);
+        playBtn.addEventListener('click', togglePlay);
+        resetBtn.addEventListener('click', resetToStart);
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    try {
+                        processData(results.data);
+                        uploadSection.style.display = 'none';
+                        controls.classList.add('active');
+                        chartContainer.classList.add('active');
+                        initializeChart();
+                    } catch (error) {
+                        chartContainer.innerHTML = '<div class="error">Erreur lors du traitement du fichier : ' + error.message + '</div>';
+                        chartContainer.classList.add('active');
+                    }
+                },
+                error: function(error) {
+                    chartContainer.innerHTML = '<div class="error">Erreur lors de la lecture du fichier : ' + error.message + '</div>';
+                    chartContainer.classList.add('active');
+                }
+            });
+        }
+
+        function processData(rawData) {
+            if (rawData.length < 2) {
+                throw new Error('Le fichier CSV doit contenir au moins 2 lignes (en-tête + données)');
+            }
+
+            activities = rawData[0].slice(1);
+            dates = [];
+            data = [];
+
+            for (let i = 1; i < rawData.length; i++) {
+                if (rawData[i].length > 1 && rawData[i][0]) {
+                    dates.push(rawData[i][0]);
+                    const values = rawData[i].slice(1).map(v => parseFloat(v) || 0);
+                    data.push(values);
+                }
+            }
+
+            if (dates.length === 0) {
+                throw new Error('Aucune donnée valide trouvée dans le fichier');
+            }
+
+            dateSlider.max = dates.length - 1;
+            dateSlider.value = 0;
+        }
+
+        function initializeChart() {
+            chartContainer.innerHTML = '';
+            
+            activities.forEach((activity, idx) => {
+                const row = document.createElement('div');
+                row.className = 'activity-row';
+                row.style.animationDelay = (idx * 0.02) + 's';
+                
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                barContainer.title = activity;
+                
+                const scale = document.createElement('div');
+                scale.className = 'bar-scale';
+                
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = 'bar-' + idx;
+                
+                barContainer.appendChild(scale);
+                barContainer.appendChild(bar);
+                row.appendChild(barContainer);
+                chartContainer.appendChild(row);
+            });
+
+            updateChart(0);
+        }
+
+        function updateChart(index) {
+            currentIndex = index;
+            dateDisplay.textContent = dates[index];
+            
+            const values = data[index];
+            let totalPositive = 0;
+            let totalNegative = 0;
+            let nonZeroCount = 0;
+
+            values.forEach((value, idx) => {
+                const bar = document.getElementById('bar-' + idx);
+                if (!bar) return;
+
+                const absValue = Math.abs(value);
+                // Calculer la largeur proportionnelle par rapport à 100%
+                // Chaque côté (positif/négatif) représente 50% de la barre totale = 100%
+                const width = (absValue / 100) * 50;
+
+                if (value > 0) {
+                    bar.className = 'bar positive';
+                    bar.style.width = width + '%';
+                    bar.style.display = 'flex';
+                    bar.textContent = absValue.toFixed(1) + '%';
+                    totalPositive += value;
+                } else if (value < 0) {
+                    bar.className = 'bar negative';
+                    bar.style.width = width + '%';
+                    bar.style.display = 'flex';
+                    bar.textContent = absValue.toFixed(1) + '%';
+                    totalNegative += value;
+                } else {
+                    bar.style.width = '0%';
+                    bar.style.display = 'none';
+                    bar.textContent = '';
+                }
+
+                if (value !== 0) nonZeroCount++;
+            });
+
+            updateStats(totalPositive, totalNegative, nonZeroCount);
+        }
+
+        function updateStats(positive, negative, activeCount) {
+            const average = activeCount > 0 ? (positive + negative) / activeCount : 0;
+            
+            headerStats.innerHTML = `
+                <div class="header-stat">
+                    <span>Positif:</span>
+                    <span class="header-stat-value">${positive.toFixed(1)}%</span>
+                </div>
+                <div class="header-stat">
+                    <span>Négatif:</span>
+                    <span class="header-stat-value">${negative.toFixed(1)}%</span>
+                </div>
+                <div class="header-stat">
+                    <span>Actives:</span>
+                    <span class="header-stat-value">${activeCount}</span>
+                </div>
+                <div class="header-stat">
+                    <span>Moyenne:</span>
+                    <span class="header-stat-value">${average.toFixed(1)}%</span>
+                </div>
+            `;
+        }
+
+        function handleSliderChange(e) {
+            stopPlay();
+            updateChart(parseInt(e.target.value));
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            isPlaying = true;
+            playBtn.textContent = '⏸ Pause';
+            
+            playInterval = setInterval(() => {
+                if (currentIndex < dates.length - 1) {
+                    currentIndex++;
+                    dateSlider.value = currentIndex;
+                    updateChart(currentIndex);
+                } else {
+                    stopPlay();
+                    resetToStart();
+                }
+            }, 500);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            playBtn.textContent = '▶ Lecture';
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        function resetToStart() {
+            stopPlay();
+            currentIndex = 0;
+            dateSlider.value = 0;
+            updateChart(0);
+        }
+    </script>
+</body>
+</html>

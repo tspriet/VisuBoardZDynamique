@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Fenêtre Temporelle - Version 1 (Historique)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+        canvas {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Icônes simplifiées
+        const PlayIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        );
+
+        const PauseIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+        );
+
+        const RotateCcwIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+        );
+
+        const UploadIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        );
+
+        const ChevronLeftIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        );
+
+        const ChevronRightIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+
+        const TemporalWindowAnimation = () => {
+            const [data, setData] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [maxReached, setMaxReached] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [speed, setSpeed] = useState(1000);
+            const [scale, setScale] = useState({ activities: 20, students: 2 });
+            const canvasRef = useRef(null);
+            const animationRef = useRef(null);
+
+            // Données par défaut
+            const defaultData = `date_debut,date_fin,nombre_activites,cohorte_active,activites_actives
+2024-09-10,2024-09-01,2,62,Inscription au cours; Consultion dans le cours
+2024-09-11,2024-09-01,2,66,Inscription au cours; Consultion dans le cours
+2024-09-12,2024-09-01,2,71,Inscription au cours; Consultion dans le cours
+2024-09-13,2024-09-01,3,75,Inscription au cours; Consultion dans le cours; Retours étudiants
+2024-09-14,2024-09-01,4,79,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning
+2024-09-15,2024-09-01,5,79,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes
+2024-09-16,2024-09-01,5,83,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes
+2024-09-17,2024-09-01,5,88,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes
+2024-09-18,2024-09-03,6,88,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes; 📢 Les informations officielles 📢
+2024-09-19,2024-09-04,6,89,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes; 📢 Les informations officielles 📢
+2024-09-20,2024-09-05,6,94,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes; 📢 Les informations officielles 📢
+2024-09-21,2024-09-06,6,95,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes; 📢 Les informations officielles 📢
+2024-09-22,2024-09-07,6,98,Inscription au cours; Consultion dans le cours; Retours étudiants; Planning; Ressources externes; 📢 Les informations officielles 📢`;
+
+            useEffect(() => {
+                parseCSV(defaultData);
+            }, []);
+
+            const parseCSV = (csvText) => {
+                const lines = csvText.trim().split('\n');
+                const parsed = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    return {
+                        date_debut: values[0],
+                        date_fin: values[1],
+                        nombre_activites: parseInt(values[2]),
+                        cohorte_active: parseInt(values[3]),
+                        activites_actives: values.slice(4).join(',')
+                    };
+                });
+                setData(parsed);
+                setCurrentIndex(0);
+                setMaxReached(0);
+            };
+
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        parseCSV(e.target.result);
+                        setIsPlaying(false);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const handleCanvasClick = (event) => {
+                const canvas = canvasRef.current;
+                if (!canvas || data.length === 0) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Convertir les coordonnées CSS en coordonnées canvas
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const canvasX = x * scaleX;
+                const canvasY = y * scaleY;
+
+                const margin = { left: 60, right: 40 };
+                const chartWidth = canvas.width - margin.left - margin.right;
+                const barWidth = Math.max(8, chartWidth / data.length);
+                const startX = margin.left;
+
+                // Déterminer sur quelle barre on a cliqué
+                for (let i = 0; i <= currentIndex; i++) {
+                    const barX = startX + i * barWidth;
+                    if (canvasX >= barX && canvasX <= barX + barWidth) {
+                        setCurrentIndex(i);
+                        setIsPlaying(false);
+                        break;
+                    }
+                }
+            };
+
+            useEffect(() => {
+                if (isPlaying && data.length > 0) {
+                    animationRef.current = setInterval(() => {
+                        setCurrentIndex(prev => {
+                            if (prev >= data.length - 1) {
+                                setIsPlaying(false);
+                                return prev;
+                            }
+                            return prev + 1;
+                        });
+                    }, speed);
+                } else {
+                    if (animationRef.current) {
+                        clearInterval(animationRef.current);
+                    }
+                }
+                return () => {
+                    if (animationRef.current) {
+                        clearInterval(animationRef.current);
+                    }
+                };
+            }, [isPlaying, speed, data.length]);
+
+            useEffect(() => {
+                // Mettre à jour le maximum atteint
+                if (currentIndex > maxReached) {
+                    setMaxReached(currentIndex);
+                }
+                drawCanvas();
+            }, [currentIndex, data, scale, maxReached]);
+
+            const drawCanvas = () => {
+                const canvas = canvasRef.current;
+                if (!canvas || data.length === 0) return;
+
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
+
+                ctx.clearRect(0, 0, width, height);
+
+                const margin = { left: 60, right: 40, top: 150, bottom: 150 };
+                const timelineY = height / 2;
+                const chartWidth = width - margin.left - margin.right;
+
+                // Ligne temporelle
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(margin.left, timelineY);
+                ctx.lineTo(width - margin.right, timelineY);
+                ctx.stroke();
+
+                if (currentIndex >= data.length) return;
+
+                // Calculer les positions
+                const startX = margin.left;
+                const barWidth = Math.max(8, chartWidth / data.length);
+                
+                // Dessiner toutes les barres jusqu'au maximum atteint
+                for (let i = 0; i <= maxReached; i++) {
+                    const item = data[i];
+                    const x = startX + i * barWidth;
+                    const isActive = i === currentIndex;
+                    const isPast = i < currentIndex;
+                    const isFuture = i > currentIndex;
+                    
+                    // Opacité: active=1, passé=0.3, futur=0.15
+                    let opacity = 1;
+                    if (isPast) opacity = 0.3;
+                    if (isFuture) opacity = 0.15;
+
+                    // Stalactite (activités - en haut)
+                    const activityHeight = item.nombre_activites * scale.activities;
+                    ctx.fillStyle = `rgba(59, 130, 246, ${opacity})`;
+                    ctx.fillRect(x, timelineY - activityHeight, barWidth - 2, activityHeight);
+                    
+                    // Contour plus épais pour la barre active
+                    ctx.strokeStyle = `rgba(37, 99, 235, ${opacity})`;
+                    ctx.lineWidth = isActive ? 2 : 1;
+                    ctx.strokeRect(x, timelineY - activityHeight, barWidth - 2, activityHeight);
+
+                    // Stalagmite (étudiants - en bas)
+                    const studentHeight = item.cohorte_active * scale.students;
+                    ctx.fillStyle = `rgba(16, 185, 129, ${opacity})`;
+                    ctx.fillRect(x, timelineY, barWidth - 2, studentHeight);
+                    
+                    // Contour plus épais pour la barre active
+                    ctx.strokeStyle = `rgba(5, 150, 105, ${opacity})`;
+                    ctx.lineWidth = isActive ? 2 : 1;
+                    ctx.strokeRect(x, timelineY, barWidth - 2, studentHeight);
+
+                    // Valeurs pour la barre active uniquement
+                    if (isActive) {
+                        ctx.fillStyle = '#1e40af';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(item.nombre_activites, x + barWidth / 2, timelineY - activityHeight - 10);
+
+                        ctx.fillStyle = '#047857';
+                        ctx.fillText(item.cohorte_active, x + barWidth / 2, timelineY + studentHeight + 20);
+                    }
+                }
+
+                // Segment de fenêtre temporelle actuelle
+                const currentItem = data[currentIndex];
+                const currentX = startX + currentIndex * barWidth;
+                
+                // Calculer la durée de la fenêtre
+                const dateDebut = new Date(currentItem.date_debut);
+                const dateFin = new Date(currentItem.date_fin);
+                const windowDays = Math.ceil((dateDebut - dateFin) / (1000 * 60 * 60 * 24));
+                
+                // Dessiner le segment de fenêtre
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(currentX + barWidth / 2, timelineY - 20);
+                ctx.lineTo(currentX + barWidth / 2, timelineY + 20);
+                ctx.stroke();
+
+                // Informations textuelles
+                ctx.fillStyle = '#1f2937';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'left';
+                
+                ctx.fillText(`Date début: ${currentItem.date_debut}`, 20, 30);
+                ctx.fillText(`Date fin: ${currentItem.date_fin}`, 20, 55);
+                ctx.fillText(`Durée fenêtre: ${windowDays} jours`, 20, 80);
+                ctx.fillText(`Jour ${currentIndex + 1} / ${data.length}`, 20, 105);
+                ctx.fillText(`Activités: ${currentItem.nombre_activites}`, 20, 130);
+                ctx.fillText(`Étudiants: ${currentItem.cohorte_active}`, 200, 130);
+
+                // Légendes
+                ctx.fillStyle = '#2563eb';
+                ctx.fillRect(width - 200, 20, 20, 20);
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Activités', width - 170, 35);
+
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(width - 200, 50, 20, 20);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillText('Étudiants', width - 170, 65);
+
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(width - 200, 80, 20, 4);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillText('Position actuelle', width - 170, 85);
+            };
+
+            const togglePlay = () => setIsPlaying(!isPlaying);
+            const reset = () => {
+                setCurrentIndex(0);
+                setMaxReached(0);
+                setIsPlaying(false);
+            };
+
+            const goToPrevious = () => {
+                if (currentIndex > 0) {
+                    setCurrentIndex(currentIndex - 1);
+                    setIsPlaying(false);
+                }
+            };
+
+            const goToNext = () => {
+                if (currentIndex < data.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                    setIsPlaying(false);
+                }
+            };
+
+            const handleSliderChange = (e) => {
+                setCurrentIndex(parseInt(e.target.value));
+                setIsPlaying(false);
+            };
+
+            return (
+                <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+                    <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                            Animation Fenêtre Temporelle - Version 1 (Avec Historique)
+                        </h1>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Cliquez sur une barre pour naviguer dans l'historique
+                        </p>
+
+                        <div className="mb-6">
+                            <canvas
+                                ref={canvasRef}
+                                width={1200}
+                                height={600}
+                                className="w-full border border-gray-300 rounded-lg bg-white hover:border-blue-400 transition-colors"
+                                onClick={handleCanvasClick}
+                            />
+                        </div>
+
+                        {/* Slider de navigation temporelle */}
+                        <div className="mb-6 px-4">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={goToPrevious}
+                                    disabled={currentIndex === 0}
+                                    className="p-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronLeftIcon />
+                                </button>
+                                
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max={data.length - 1}
+                                    value={currentIndex}
+                                    onChange={handleSliderChange}
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentIndex / (data.length - 1)) * 100}%, #e5e7eb ${(currentIndex / (data.length - 1)) * 100}%, #e5e7eb 100%)`
+                                    }}
+                                />
+                                
+                                <button
+                                    onClick={goToNext}
+                                    disabled={currentIndex === data.length - 1}
+                                    className="p-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronRightIcon />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={togglePlay}
+                                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                                >
+                                    {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                                    <span>{isPlaying ? 'Pause' : 'Lecture'}</span>
+                                </button>
+                                
+                                <button
+                                    onClick={reset}
+                                    className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md"
+                                >
+                                    <RotateCcwIcon />
+                                    <span>Réinitialiser</span>
+                                </button>
+
+                                <label className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md cursor-pointer">
+                                    <UploadIcon />
+                                    <span>Charger CSV</span>
+                                    <input
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={handleFileUpload}
+                                        style={{ display: 'none' }}
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="flex gap-4 items-center">
+                                <label className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-700">Vitesse:</span>
+                                    <select
+                                        value={speed}
+                                        onChange={(e) => setSpeed(Number(e.target.value))}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value={2000}>Lent (2s)</option>
+                                        <option value={1000}>Normal (1s)</option>
+                                        <option value={500}>Rapide (0.5s)</option>
+                                        <option value={200}>Très rapide (0.2s)</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 items-center">
+                            <label className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Échelle activités:</span>
+                                <input
+                                    type="range"
+                                    min="5"
+                                    max="40"
+                                    value={scale.activities}
+                                    onChange={(e) => setScale(prev => ({ ...prev, activities: Number(e.target.value) }))}
+                                    className="w-32"
+                                />
+                                <span className="text-sm text-gray-600">{scale.activities}px</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Échelle étudiants:</span>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="5"
+                                    step="0.5"
+                                    value={scale.students}
+                                    onChange={(e) => setScale(prev => ({ ...prev, students: Number(e.target.value) }))}
+                                    className="w-32"
+                                />
+                                <span className="text-sm text-gray-600">{scale.students}px</span>
+                            </label>
+                        </div>
+
+                        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-gray-700">
+                                <strong>Version 1 - Avec historique:</strong> Cette version affiche tout l'historique des barres jusqu'au jour actuel.
+                                Les barres précédentes sont affichées en transparence. Vous pouvez naviguer en cliquant directement sur une barre,
+                                en utilisant le slider, les flèches, ou en lançant l'animation automatique. La barre active est mise en surbrillance
+                                et les informations (dates, durée, nombre d'activités et d'étudiants) sont mises à jour en temps réel.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<TemporalWindowAnimation />, document.getElementById('root'));
+    </script>
+</body>
+</html>

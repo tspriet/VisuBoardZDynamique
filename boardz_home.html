@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoardZ : Votre tableau pédagogique</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            margin-top: 20px;
+            color: #333;
+        }
+
+        .menu-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+            gap: 20px;
+        }
+
+        .tile {
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .tile h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .tile p {
+            font-size: 0.9em;
+        }
+
+        footer {
+            margin: 20px 0 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .license {
+            margin: 10px 0;
+            font-size: 0.8em;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <h1>BoardZ : Votre tableau pédagogique</h1>
+    <div class="menu-container">
+        <!-- Tile for "Modélisation cohortes" -->
+        <a href="csv_viz_V3-vuecohorte-note.html" class="tile">
+            <h2>Modélisation cohortes</h2>
+            <p>Analyse des évolutions par cohorte</p>
+        </a>
+
+        <!-- Tile for "Activité d'un étudiant" -->
+        <a href="student_activity_chart_amelie.html" class="tile">
+            <h2>Activité d'un étudiant</h2>
+            <p>Chaque élève au cœur des données</p>
+        </a>
+
+        <!-- Tile for "Évolution fenêtre active" -->
+        <a href="temporal_window_v1_interactive.html" class="tile">
+            <h2>Évolution fenêtre active</h2>
+            <p>Explorer les fenêtres temporelles</p>
+        </a>
+
+        <!-- Placeholder Tile for "Appropriation des ressources" -->
+        <a href="#" class="tile">
+            <h2>Appropriation des ressources</h2>
+            <p>Utilisation des ressources par les étudiants</p>
+        </a>
+    </div>
+
+    <footer>
+        <div class="license">
+            &copy; 2025 BoardZ - Licence Creative Commons SA2-BY
+        </div>
+    </footer>
+</body>
+</html>
